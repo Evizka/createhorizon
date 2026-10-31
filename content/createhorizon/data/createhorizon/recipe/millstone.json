@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "minecraft:stone",
+    "minecraft:iron_ingot",
+    "minecraft:stick"
+  ],
+  "result": {
+    "id": "createhorizon:millstone"
+  }
+}

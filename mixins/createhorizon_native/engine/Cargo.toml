@@ -1,0 +1,11 @@
+[package]
+name = "create-engine"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Strict deterministic simulation core for the Create Horizon native mod"
+
+[lib]
+name = "create_engine"
+path = "src/lib.rs"

@@ -1,0 +1,10 @@
+{
+  "values": [
+    "createhorizon:hand_crank",
+    "createhorizon:shaft",
+    "createhorizon:small_cogwheel",
+    "createhorizon:large_cogwheel",
+    "createhorizon:millstone",
+    "createhorizon:crushing_wheel"
+  ]
+}
