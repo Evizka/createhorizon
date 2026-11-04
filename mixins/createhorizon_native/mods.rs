@@ -3,8 +3,12 @@ fn register_createhorizon_mod(mods: &mut Vec<NativeMod>) {
         id: String::from("createhorizon_native"),
         title: String::from("Create Horizon 0.1.0"),
         description: String::from(
-            "Deterministic fixed-point kinetic prototype; the content pack supplies six sample components.",
+            "Fixed-point kinetics prototype; toggle the nearest hand crank with the configured key.",
         ),
-        keys: Vec::new(),
+        keys: vec![[
+            String::from("crank"),
+            String::from("Toggle nearest hand crank"),
+            String::from("key.keyboard.c"),
+        ]],
     });
 }

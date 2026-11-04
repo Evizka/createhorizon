@@ -30,22 +30,21 @@ mod therefore uses the native `.hnmod` source-mixin path plus a separate
 content-only `.hmod`; it is not a WASM mod. The adapter targets Horizon
 `ba6344a59cb9e755b730dcf02285fc0d33b97d3c`, horizon-mixins
 `d9c83d7096b7ea5b83678da2efdfd6161f74997e`, game line `26.3`, and native-hook
-API 11. The full pins and source SHA-256 checks are in `compatibility.json`.
+API 3. The full pins and source SHA-256 checks are in `compatibility.json`.
 
-The native hooks add the mod to Options > Mods, draw a small HUD, and intercept
-`/createhorizon scan`. The runtime reads the public world block states in a
-small radius, converts the host-provided player position to integer block
-coordinates at the boundary, and simulates the discovered sample components
-with `create-engine`. GUI layout uses Horizon's `f32` HUD helpers, but those
-values never enter simulation. The sample intentionally does not mutate blocks,
-items, or world state.
+The native hooks add the mod to Options > Mods, register a configurable key,
+draw a compact HUD, and intercept `/createhorizon scan`. Pressing the configured
+key (C by default) toggles the nearest hand crank in the scan radius; it supplies
+16 RPM and capacity 16 while enabled. Inactive hand cranks are passive shafts.
+The HUD's four-frame glyph is a 2D status indicator, not an in-world block
+animation. The runtime still only reads public block states and does not mutate
+blocks, items, or world state. The pinned hook API has no block-render callback,
+so animated shaft/cogwheel models need a future renderer integration.
 
 The content pack defines six simple cube blocks in the `createhorizon:`
-namespace. Their kinetic axes are fixed to Z for this prototype. A hand crank
-is a constant 16-RPM source with capacity 16; the millstone's sample stress is
-12 and the crushing wheel's is 24. These are test parameters, not a claim of
-full Create parity. There is no moving-block animation or complete Create
-content/recipe port yet.
+namespace. Their kinetic axes are fixed to Z for this prototype. The millstone's
+sample stress is 12 and the crushing wheel's is 24. These are test parameters,
+not a claim of full Create parity.
 
 ## Recovered behavior and provenance
 

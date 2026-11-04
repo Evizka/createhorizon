@@ -1,9 +1,10 @@
 # Create → Horizon
 
 Идиоматичный Rust-порт механик Create. Симуляционное ядро — `no_std`,
-без `unsafe` и без floating-point в математике мира. В репозитории теперь есть
-устанавливаемый smoke-test мод: native `.hnmod` с read-only HUD/командой и
-отдельный content `.hmod` с шестью тестовыми блоками.
+без `unsafe` и без floating-point в математике мира. В репозитории есть
+устанавливаемый smoke-test мод: native `.hnmod` с HUD, командой и
+переключаемым ручным приводом, а также content `.hmod` с шестью тестовыми
+блоками.
 
 > **Это native Horizon mod, не WASM.** Проверенный Horizon `main` не исполняет
 > игровые WASM-моды с кодом. `.hnmod` — source-only Rust mixin bundle, который
@@ -19,28 +20,31 @@
   чтобы Rust-потребители могли использовать небольшие crates без копий кода.
 - Content `.hmod` добавляет `createhorizon:hand_crank`, `shaft`,
   `small_cogwheel`, `large_cogwheel`, `millstone` и `crushing_wheel`.
-- Native `.hnmod` добавляет mod в Options > Mods, небольшой HUD и команду
-  `/createhorizon scan`. Команда сканирует блоки в радиусе 8 и выводит числа
-  сети и детерминированный state hash; HUD пересчитывает область радиусом 3.
-- Тестовый hand crank — постоянный источник 16 RPM с capacity 16. Millstone
-  имеет демонстрационный stress 12, crushing wheel — 24. Эти значения нужны
-  для воспроизводимого теста, а не заявляют полную parity с Create.
+- Native `.hnmod` регистрируется в Options > Mods, добавляет HUD, команду
+  `/createhorizon scan` и настраиваемую клавишу (по умолчанию C). Нажатие
+  переключает ближайшую рукоятку: она становится источником 16 RPM, а HUD
+  показывает вращающийся индикатор. Неактивные рукоятки работают как пассивные
+  валы.
+- Millstone имеет демонстрационный stress 12, crushing wheel — 24. Эти значения
+  нужны для воспроизводимого теста, а не заявляют полную parity с Create.
 
-Тестовая сборка не меняет мир напрямую: она только читает публичные block
-states, вычисляет модель сети и показывает результат. Блоки для smoke test —
-простые кубы с ванильными текстурами; нет вращающейся анимации, интерактивной
-рукоятки и полного набора Create.
+Индикатор вращения — анимация HUD, а не вращение моделей в игровом мире.
+Закреплённый native hook API не предоставляет callback рендера блоков, поэтому
+модели валов и шестерён пока остаются статичными. Smoke test только читает
+публичные block states, вычисляет модель сети и показывает результат; он не
+меняет мир напрямую.
 
 ## Пакеты
 
-Пакеты уже собраны в [`artifacts/`](artifacts/):
+В [`artifacts/`](artifacts/) лежат собранные пакеты:
 
 | Файл | Назначение | SHA-256 |
 |---|---|---|
 | `createhorizon-0.1.0.hmod` | Content blocks, recipes, loot и модели | `4a5c4f0c141a24a26fc473e85d6517a1915df49a8f0dc492864ee1dc79768c6b` |
 | `createhorizon_native-0.1.0.hnmod` | Native Horizon Mixins source bundle | `7ec7884362c2ad134f4f686910ccdab9cd040d81f9b0118d197d3a5ea387cd84` |
 
-Пакеты можно воспроизводимо пересобрать и проверить локально:
+Это сохранённые артефакты предыдущей сборки; они ещё не включают переключаемый
+привод. Перед установкой текущего исходного кода пересоберите пакеты:
 
 ```sh
 python3 tools/package.py
@@ -49,7 +53,7 @@ python3 tools/package.py
 `horizon-mixin.toml` и `compatibility.json` pin'ят Horizon
 `ba6344a59cb9e755b730dcf02285fc0d33b97d3c`, horizon-mixins
 `d9c83d7096b7ea5b83678da2efdfd6161f74997e`, game line `26.3` и native hooks
-API `11`. SHA-256 целевых Horizon-файлов проверяется при staging.
+API `3`. SHA-256 целевых Horizon-файлов проверяется при staging.
 
 ## Быстрая проверка в игре
 
@@ -74,15 +78,17 @@ small_cogwheel   (1, 1,  2)
 millstone        (0, 0, -1)
 ```
 
-Откройте чат и выполните `/createhorizon scan`. Для этой схемы ожидаются
-`parts=5`, `links=4`, `networks=1`, `driven=5`, `max=32 rpm`, `overload=0`.
-Затем замените millstone на `crushing_wheel`: ожидаются `overload=1`,
-`driven=0`, `max=0 rpm`. HUD показывает ближайшую сеть, если она в радиусе 3.
+Нажмите C (или выбранную клавишу мода) один раз, чтобы включить ближайшую
+рукоятку. HUD покажет вращающийся индикатор; команда `/createhorizon scan`
+должна сообщить `parts=5`, `links=4`, `networks=1`, `driven=5`, `max=32 rpm`,
+`overload=0`. Замените millstone на `crushing_wheel`: при включённом приводе
+ожидаются `overload=1`, `driven=0`, `max=0 rpm`. Нажмите клавишу ещё раз, чтобы
+остановить рукоятку.
 
-Это end-to-end gameplay smoke test после сборки native bundle, не гарантия
+Это end-to-end gameplay smoke test после пересборки native bundle, не гарантия
 совместимости с произвольной веткой Horizon. `.hnmod` содержит исходники, а не
 готовый исполняемый файл; для его компиляции нужен launcher/build, совместимый
-с указанным Horizon revision.
+с указанным Horizon revision. HUD-индикатор не анимирует блоки в мире.
 
 ## Сборка native-варианта из исходников
 

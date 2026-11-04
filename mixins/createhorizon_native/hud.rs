@@ -13,14 +13,15 @@ fn draw_createhorizon_hud(game: &mut Game<'_>, batch: &mut HudBatch, corners: &m
         .map(|line| game.native_text_width(line))
         .fold(0.0, f32::max)
         + 4.0;
-    let height = 32.0;
+    let height = 42.0;
     let (x, y) = corners.place(Corner::TopLeft, width, height);
     game.native_fill(batch, [x, y, width, height], 0x7800_0000);
     for (index, line) in lines.iter().enumerate() {
         let line_y = match index {
             0 => y + 2.0,
             1 => y + 12.0,
-            _ => y + 22.0,
+            2 => y + 22.0,
+            _ => y + 32.0,
         };
         game.native_text(batch, line, [x + 2.0, line_y], 0xD6E7F0, true);
     }
