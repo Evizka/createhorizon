@@ -15,10 +15,15 @@ OUTPUT = ROOT / "artifacts"
 EXPECTED_BLOCKS = {
     "hand_crank",
     "shaft",
+    "vertical_shaft",
     "small_cogwheel",
     "large_cogwheel",
     "millstone",
     "crushing_wheel",
+    "water_wheel",
+    "gearbox",
+    "speedometer",
+    "clutch",
 }
 
 
@@ -73,7 +78,7 @@ def validate_content() -> tuple[dict[str, bytes], str, str]:
         if name.startswith("data/createhorizon/horizon/block/") and name.endswith(".json")
     }
     if blocks != EXPECTED_BLOCKS:
-        raise SystemExit(f"expected six sample blocks, found {sorted(blocks)}")
+        raise SystemExit(f"expected {len(EXPECTED_BLOCKS)} sample blocks, found {sorted(blocks)}")
     for block in sorted(blocks):
         model_path = f"assets/createhorizon/models/block/{block}.json"
         state_path = f"assets/createhorizon/blockstates/{block}.json"
@@ -112,6 +117,21 @@ def validate_native(compatibility: dict[str, object]) -> tuple[dict[str, bytes],
         "mixins": compatibility["horizon_mixins_revision"],
         "hooks": compatibility["horizon_native_hooks_api"],
     }
+    # A helper named in the manifest that the bundle does not carry would
+    # only fail later, in the launcher's build.
+    for injection in mixin.get("injection", []):
+        helper = injection.get("helper")
+        if not helper:
+            raise SystemExit(f"injection {injection.get('id')!r} names no helper")
+        if not (BUNDLE / helper).is_file():
+            raise SystemExit(f"injection {injection.get('id')!r} names missing helper {helper}")
+        if not injection.get("bindings"):
+            raise SystemExit(f"injection {injection.get('id')!r} declares no bindings")
+    for module in mixin.get("module", []):
+        source = module.get("source")
+        if not source or not (BUNDLE / source).is_file():
+            raise SystemExit(f"module {module.get('id')!r} names missing source {source}")
+
     files = {
         "horizon-native.json": (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode()
     }

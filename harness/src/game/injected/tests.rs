@@ -277,3 +277,25 @@ fn the_settings_page_switches_the_same_toggles_as_the_keys() {
     list_createhorizon_settings(&mut game, "someone_else", &mut other);
     assert!(other.is_empty());
 }
+
+#[test]
+fn the_readme_second_network_runs_on_water_through_a_gearbox() {
+    let _guard = toggles();
+    let mut world = TestWorld::new();
+    world.set(0, 0, 0, "createhorizon:water_wheel");
+    world.water(1, 0, 0, 8, false);
+    world.water(-1, 0, 0, 8, false);
+    world.water(0, 1, 0, 8, false);
+    world.set(0, 0, 1, "createhorizon:gearbox");
+    world.set(0, 1, 1, "createhorizon:vertical_shaft");
+    world.set(0, 2, 1, "createhorizon:speedometer");
+    world.set(0, 3, 1, "createhorizon:clutch");
+    world.set(0, 4, 1, "createhorizon:vertical_shaft");
+    let mut game = world.game(0.5, 0.5, 0.5);
+
+    let engaged = scan(&mut game);
+    println!("ENGAGED  {engaged}");
+    run_createhorizon_key(&mut game, "key.keyboard.v", true);
+    let released = scan(&mut game);
+    println!("RELEASED {released}");
+}

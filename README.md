@@ -1,10 +1,10 @@
 # Create → Horizon
 
-Идиоматичный Rust-порт механик Create. Симуляционное ядро — `no_std`,
-без `unsafe` и без floating-point в математике мира. В репозитории есть
-устанавливаемый smoke-test мод: native `.hnmod` с HUD, командой и
-переключаемым ручным приводом, а также content `.hmod` с шестью тестовыми
-блоками.
+Идиоматичный Rust-порт механик Create для Horizon (Minecraft: Java Edition
+26.3, переписанный на Rust). Симуляционное ядро — `no_std`, без `unsafe` и без
+floating-point в математике мира. В репозитории есть устанавливаемый мод:
+content `.hmod` с одиннадцатью блоками и native `.hnmod` с HUD, командой,
+двумя клавишами и страницей настроек.
 
 > **Это native Horizon mod, не WASM.** Проверенный Horizon `main` не исполняет
 > игровые WASM-моды с кодом. `.hnmod` — source-only Rust mixin bundle, который
@@ -18,21 +18,53 @@
   `mixins/createhorizon_native/engine` и объявлен `no_std`.
 - `create-math` и `create-kinetics` — тонкие совместимые re-export facades,
   чтобы Rust-потребители могли использовать небольшие crates без копий кода.
-- Content `.hmod` добавляет `createhorizon:hand_crank`, `shaft`,
-  `small_cogwheel`, `large_cogwheel`, `millstone` и `crushing_wheel`.
+- Content `.hmod` добавляет одиннадцать блоков в неймспейсе `createhorizon:`
+  (таблица ниже).
 - Native `.hnmod` регистрируется в Options > Mods, добавляет HUD, команду
-  `/createhorizon scan` и настраиваемую клавишу (по умолчанию C). Нажатие
-  переключает ближайшую рукоятку: она становится источником 16 RPM, а HUD
-  показывает вращающийся индикатор. Неактивные рукоятки работают как пассивные
-  валы.
-- Millstone имеет демонстрационный stress 12, crushing wheel — 24. Эти значения
-  нужны для воспроизводимого теста, а не заявляют полную parity с Create.
+  `/createhorizon scan` и две настраиваемые клавиши: **C** включает ближайшую
+  рукоятку, **V** размыкает и смыкает все сцепления.
 
-Индикатор вращения — анимация HUD, а не вращение моделей в игровом мире.
-Закреплённый native hook API не предоставляет callback рендера блоков, поэтому
-модели валов и шестерён пока остаются статичными. Smoke test только читает
-публичные block states, вычисляет модель сети и показывает результат; он не
-меняет мир напрямую.
+### Блоки
+
+Content-мод Horizon копирует ванильный блок-шаблон и не умеет объявлять
+block-state properties, поэтому ось каждой детали фиксирована её id.
+
+| Блок | Ось | Роль в сети |
+|---|---|---|
+| `hand_crank` | Z | Ручной источник: 16 RPM, capacity 16, включается клавишей |
+| `shaft` | Z | Вал: передаёт вращение 1:1 вдоль своей оси |
+| `vertical_shaft` | Y | То же, но по вертикали |
+| `small_cogwheel` | Z | Малая шестерня (контакты по правилам Create) |
+| `large_cogwheel` | Z | Большая шестерня |
+| `millstone` | Z | Нагрузка: stress 12 |
+| `crushing_wheel` | Z | Нагрузка: stress 24 |
+| `water_wheel` | Z | Источник от воды вокруг: до 4 RPM и capacity 16 |
+| `gearbox` | Z → Y | Редуктор: принимает вращение по Z и отдаёт его по Y, инвертированным |
+| `speedometer` | любая | Спидометр: показывает скорость сети, не добавляя stress |
+| `clutch` | любая | Сцепление: разомкнутое рвёт все свои контакты |
+
+Стресс жернов и дробилки — демонстрационные параметры (12 и 24), а не
+заявление о полной parity с Create.
+
+### Правила новых деталей
+
+- **Водяное колесо.** С четырёх сторон, перпендикулярных его оси, читается
+  вода: каждая сторона даёт `level` (1..8, источник и падающий столб — 8) и
+  ещё 4, если вода падает. Сумма ограничена полным потоком 16; скорость равна
+  `flow / 4` RPM, capacity — `flow` единиц. Сухое колесо — пассивный вал.
+- **Редуктор.** Вращение заходит на его входную грань (Z) и выходит с выходной
+  (Y) инвертированным. По входной оси редуктор передаёт вращение и напрямую,
+  сквозь себя.
+- **Сцепление.** Разомкнутое, оно не проводит ни один контакт: сети по обе
+  стороны работают порознь.
+- **Спидометр и сцепление** — фитинги: они представляют грань на всех трёх
+  осях, поэтому один блок подходит к линии о любом направлении. Спидометр не
+  имеет ни источника, ни нагрузки; HUD и команда показывают скорость там, где
+  он стоит.
+
+Индикатор вращения в HUD — анимация 2D-индикатора, а не вращение моделей в
+мире: закреплённый native hook API не даёт callback рендера блоков. Мод только
+читает публичные block states и не меняет мир.
 
 ## Пакеты
 
@@ -40,11 +72,10 @@
 
 | Файл | Назначение | SHA-256 |
 |---|---|---|
-| `createhorizon-0.1.0.hmod` | Content blocks, recipes, loot и модели | `4a5c4f0c141a24a26fc473e85d6517a1915df49a8f0dc492864ee1dc79768c6b` |
-| `createhorizon_native-0.1.0.hnmod` | Native Horizon Mixins source bundle | `7ec7884362c2ad134f4f686910ccdab9cd040d81f9b0118d197d3a5ea387cd84` |
+| `createhorizon-0.1.0.hmod` | Content blocks, recipes, loot и модели | `8a0190d7fc2f96d2791f49959f326f3a3f7cd8804998709a1e429386c0cc7a3d` |
+| `createhorizon_native-0.1.0.hnmod` | Native Horizon Mixins source bundle | `5a13aabce47c088bae3e65bbc4a2a58011e5735c16d385b624a4eab26629f22e` |
 
-Это сохранённые артефакты предыдущей сборки; они ещё не включают переключаемый
-привод. Перед установкой текущего исходного кода пересоберите пакеты:
+Хэши пересчитываются при каждой пересборке:
 
 ```sh
 python3 tools/package.py
@@ -66,9 +97,11 @@ horizon-native-mods/createhorizon_native-0.1.0.hnmod
 ```
 
 Запустите игру. В Options > Mods включите **Create Horizon Kinetics** и
-**Create Horizon 0.1.0**; после переключения content-мода перезапустите игру.
-В creative inventory найдите тестовые блоки или скрафтите их. Постройте сеть
-рядом с игроком, где координаты относительны к hand crank:
+**Create Horizon 0.1.0**; там же, на странице мода, лежат две кнопки —
+состояние сцепления и рукоятки. После переключения content-мода перезапустите
+игру. В creative inventory найдите блоки или скрафтите их.
+
+**Сеть 1 — базовая.** Координаты относительны к рукоятке:
 
 ```text
 hand_crank       (0, 0,  0)
@@ -78,21 +111,64 @@ small_cogwheel   (1, 1,  2)
 millstone        (0, 0, -1)
 ```
 
-Нажмите C (или выбранную клавишу мода) один раз, чтобы включить ближайшую
-рукоятку. HUD покажет вращающийся индикатор; команда `/createhorizon scan`
-должна сообщить `parts=5`, `links=4`, `networks=1`, `driven=5`, `max=32 rpm`,
+Нажмите C один раз, чтобы включить ближайшую рукоятку. `/createhorizon scan`
+должен сообщить `parts=5`, `links=4`, `networks=1`, `driven=5`, `max=32 rpm`,
 `overload=0`. Замените millstone на `crushing_wheel`: при включённом приводе
-ожидаются `overload=1`, `driven=0`, `max=0 rpm`. Нажмите клавишу ещё раз, чтобы
-остановить рукоятку.
+ожидаются `overload=1`, `driven=0`, `max=0 rpm`.
+
+**Сеть 2 — вода, редуктор, спидометр, сцепление:**
+
+```text
+water_wheel      (0, 0, 0)   с водой в (1,0,0), (-1,0,0), (0,1,0)
+gearbox          (0, 0, 1)
+vertical_shaft   (0, 1, 1)
+speedometer      (0, 2, 1)
+clutch           (0, 3, 1)
+vertical_shaft   (0, 4, 1)
+```
+
+Колесо гонит `flow=16`, `max=4 rpm`; спидометр на выходе редуктора показывает
+`gauge=-4 rpm` (выходная грань инвертирована) при `parts=6`, `links=5`,
+`networks=1`, `driven=6`. Нажмите V — сцепление разомкнётся и рвёт оба своих
+контакта: `networks=3`, `links=3`, `driven=4`, `clutch=released`; вал за
+сцеплением остановится. Нажмите V ещё раз, чтобы сомкнуть.
 
 Это end-to-end gameplay smoke test после пересборки native bundle, не гарантия
 совместимости с произвольной веткой Horizon. `.hnmod` содержит исходники, а не
 готовый исполняемый файл; для его компиляции нужен launcher/build, совместимый
-с указанным Horizon revision. HUD-индикатор не анимирует блоки в мире.
+с указанным Horizon revision.
+
+## Проверки этого checkout
+
+```sh
+python3 tools/bootstrap-rust.py                 # ставит Rust 1.97.0, печатает путь
+export PATH="$(python3 tools/bootstrap-rust.py):$PATH"
+cargo fmt --all --check
+cargo test --workspace --lib --tests
+cargo clippy --workspace --all-targets -- -D warnings
+python3 tools/package.py
+```
+
+`cargo test --workspace` (без `--lib --tests`) дополнительно прогоняет doctests и
+требует `rustdoc`, которого в офлайн-тулчейне нет; в обычной установке Rust он
+есть.
+
+Кроме engine-тестов, `harness/` собирает стенд: он воспроизводит типы хоста,
+которые называет бандл (`Game`, `HudBatch`, `Corners`, `NativeMod`, мир и
+state facts, а также `horizon_client::blocks::Fluid`, который читает колесо),
+и `include!`-ит исходники бандла. Так миксины компилируются и тестируются
+здесь, без Horizon checkout:
+
+```sh
+cargo test -p createhorizon-harness
+```
+
+Это проверка, а не порт: стенд моделирует закреплённый API `horizon-client`,
+и все значения в его тестах — фикстуры самого мода.
 
 ## Сборка native-варианта из исходников
 
-Для воспроизводимого локального build понадобятся Linux, Rust 1.95.0, Git,
+Для воспроизводимого локального build понадобятся Linux, Rust 1.95.0+, Git,
 Cargo, Python 3.11+ и исходники с точными pin'ами. Команды собирают отдельный
 stage и не меняют исходный Horizon checkout:
 
@@ -117,20 +193,6 @@ python3 tools/horizon.py build --horizon ../horizon
 compile check, `test` также запускает две regression-тесты интегрированного
 sample solver, `build` создаёт native client. Для повторного использования
 другого каталога Cargo передайте `--target-dir PATH`.
-
-## Проверки этого checkout
-
-```sh
-cargo fmt --all --check
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
-python3 tools/package.py
-```
-
-В текущей sandbox-среде нет `rustc`, `cargo`, `rustfmt` и `clippy-driver`,
-поэтому Rust-сборка и unit tests здесь не запускались. Выполнены упаковка и
-проверки Python/TOML/JSON/Rust-синтаксиса; это не подменяет компиляцию Rust и
-Horizon stage.
 
 ## Источники и ограничения
 

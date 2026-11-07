@@ -1,8 +1,13 @@
 {
+  "block.createhorizon.clutch": "Clutch",
+  "block.createhorizon.crushing_wheel": "Crushing Wheel",
+  "block.createhorizon.gearbox": "Gearbox",
   "block.createhorizon.hand_crank": "Hand Crank",
-  "block.createhorizon.shaft": "Shaft",
-  "block.createhorizon.small_cogwheel": "Small Cogwheel",
   "block.createhorizon.large_cogwheel": "Large Cogwheel",
   "block.createhorizon.millstone": "Millstone",
-  "block.createhorizon.crushing_wheel": "Crushing Wheel"
+  "block.createhorizon.shaft": "Shaft",
+  "block.createhorizon.small_cogwheel": "Small Cogwheel",
+  "block.createhorizon.speedometer": "Speedometer",
+  "block.createhorizon.vertical_shaft": "Vertical Shaft",
+  "block.createhorizon.water_wheel": "Water Wheel"
 }

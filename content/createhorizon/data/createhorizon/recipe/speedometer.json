@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "createhorizon:shaft",
+    "minecraft:glass",
+    "minecraft:gold_ingot"
+  ],
+  "result": {
+    "id": "createhorizon:speedometer"
+  }
+}

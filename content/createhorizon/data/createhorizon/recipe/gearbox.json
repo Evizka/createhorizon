@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "createhorizon:small_cogwheel",
+    "createhorizon:large_cogwheel",
+    "minecraft:iron_ingot"
+  ],
+  "result": {
+    "id": "createhorizon:gearbox"
+  }
+}

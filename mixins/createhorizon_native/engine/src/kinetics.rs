@@ -61,42 +61,65 @@ pub struct Terminal {
 /// component's axle, the axis [`Rotational::axis`] answers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Terminals {
-    entries: [Terminal; 2],
+    entries: [Terminal; 3],
     len: usize,
 }
 
 impl Terminals {
+    /// One face: every component but a gearbox, a gauge and a clutch.
     #[must_use]
     pub const fn single(axis: Axis) -> Self {
+        let face = Terminal {
+            axis,
+            inverted: false,
+        };
         Self {
-            entries: [
-                Terminal {
-                    axis,
-                    inverted: false,
-                },
-                Terminal {
-                    axis,
-                    inverted: false,
-                },
-            ],
+            entries: [face, face, face],
             len: 1,
         }
     }
 
+    /// A gearbox's two faces: rotation goes in on the first and comes out on
+    /// the second, reversed.
     #[must_use]
     pub const fn pair(input: Axis, output: Axis) -> Self {
+        let output_face = Terminal {
+            axis: output,
+            inverted: true,
+        };
         Self {
             entries: [
                 Terminal {
                     axis: input,
                     inverted: false,
                 },
-                Terminal {
-                    axis: output,
-                    inverted: true,
-                },
+                output_face,
+                output_face,
             ],
             len: 2,
+        }
+    }
+
+    /// A face on every axis: a fitting joins whichever line it is put on, so
+    /// one block serves a run about any of the three.
+    #[must_use]
+    pub const fn every_axis() -> Self {
+        Self {
+            entries: [
+                Terminal {
+                    axis: Axis::X,
+                    inverted: false,
+                },
+                Terminal {
+                    axis: Axis::Y,
+                    inverted: false,
+                },
+                Terminal {
+                    axis: Axis::Z,
+                    inverted: false,
+                },
+            ],
+            len: 3,
         }
     }
 
@@ -171,9 +194,10 @@ impl KineticPart {
             Self::Shaft { axis, .. }
             | Self::HandCrank { axis, .. }
             | Self::Load { axis, .. }
-            | Self::WaterWheel { axis, .. }
-            | Self::Speedometer { axis, .. }
-            | Self::Clutch { axis, .. } => Terminals::single(axis),
+            | Self::WaterWheel { axis, .. } => Terminals::single(axis),
+            // The gauge and the clutch are fittings: they read or break any
+            // line they are placed on, whatever its axis.
+            Self::Speedometer { .. } | Self::Clutch { .. } => Terminals::every_axis(),
             Self::Cogwheel(wheel) => Terminals::single(wheel.axis),
             Self::Gearbox { input, output, .. } => Terminals::pair(input, output),
         }
@@ -1030,6 +1054,26 @@ mod tests {
         );
         assert_eq!(gearbox.terminals().on(Axis::X), None);
         assert_eq!(shaft(pos(0, 0, 0)).terminals().as_slice().len(), 1);
+        let gauge = KineticPart::Speedometer {
+            position: pos(0, 0, 0),
+            axis: Axis::Z,
+        };
+        for axis in Axis::ALL {
+            assert_eq!(
+                gauge.terminals().on(axis),
+                Some(Terminal {
+                    axis,
+                    inverted: false
+                })
+            );
+            assert_eq!(
+                clutch(pos(0, 0, 0), true).terminals().on(axis),
+                Some(Terminal {
+                    axis,
+                    inverted: false
+                })
+            );
+        }
         assert!(clutch(pos(0, 0, 0), true).conducts());
         assert!(!clutch(pos(0, 0, 0), false).conducts());
         assert!(shaft(pos(0, 0, 0)).conducts());

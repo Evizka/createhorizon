@@ -1,10 +1,15 @@
 {
   "values": [
+    "createhorizon:clutch",
+    "createhorizon:crushing_wheel",
+    "createhorizon:gearbox",
     "createhorizon:hand_crank",
-    "createhorizon:shaft",
-    "createhorizon:small_cogwheel",
     "createhorizon:large_cogwheel",
     "createhorizon:millstone",
-    "createhorizon:crushing_wheel"
+    "createhorizon:shaft",
+    "createhorizon:small_cogwheel",
+    "createhorizon:speedometer",
+    "createhorizon:vertical_shaft",
+    "createhorizon:water_wheel"
   ]
 }
