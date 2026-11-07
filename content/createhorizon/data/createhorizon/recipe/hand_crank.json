@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "minecraft:stick",
+    "minecraft:iron_ingot"
+  ],
+  "result": {
+    "id": "createhorizon:hand_crank"
+  }
+}

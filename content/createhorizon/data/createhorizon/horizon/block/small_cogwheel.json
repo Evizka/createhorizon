@@ -1,0 +1,8 @@
+{
+  "template": "minecraft:copper_block",
+  "properties": {
+    "hardness": 2.0,
+    "sounds": "minecraft:copper_block"
+  },
+  "item": true
+}

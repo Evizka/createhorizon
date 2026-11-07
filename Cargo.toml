@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "crates/create-math",
+    "crates/create-kinetics",
+    "mixins/createhorizon_native/engine",
+    "harness",
+    "harness/horizon-client",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"

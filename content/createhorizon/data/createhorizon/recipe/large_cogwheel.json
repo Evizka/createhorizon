@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "minecraft:gold_ingot",
+    "minecraft:oak_planks",
+    "minecraft:oak_planks",
+    "minecraft:stick"
+  ],
+  "result": {
+    "id": "createhorizon:large_cogwheel"
+  }
+}

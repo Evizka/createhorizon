@@ -1,0 +1,8 @@
+id = "createhorizon"
+name = "Create Horizon Kinetics"
+version = "0.2.0"
+description = "Eleven sample kinetic components for the Create Horizon native prototype."
+authors = []
+api = "0.2"
+side = "both"
+capabilities = ["registries"]
