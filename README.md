@@ -72,8 +72,8 @@ block-state properties, поэтому ось каждой детали фикс
 
 | Файл | Назначение | SHA-256 |
 |---|---|---|
-| `createhorizon-0.1.0.hmod` | Content blocks, recipes, loot и модели | `8a0190d7fc2f96d2791f49959f326f3a3f7cd8804998709a1e429386c0cc7a3d` |
-| `createhorizon_native-0.1.0.hnmod` | Native Horizon Mixins source bundle | `5a13aabce47c088bae3e65bbc4a2a58011e5735c16d385b624a4eab26629f22e` |
+| `createhorizon-0.2.0.hmod` | Content blocks, recipes, loot и модели | `2f460ef3ad2211274880512de34f82ac48184b8aa6b27b03da83e729dfe899e6` |
+| `createhorizon_native-0.2.0.hnmod` | Native Horizon Mixins source bundle | `e52998d29a109b86f2d747a9c69d20ab2c824308350950668758fc78dcaf5c10` |
 
 Хэши пересчитываются при каждой пересборке:
 
@@ -92,12 +92,12 @@ API `3`. SHA-256 целевых Horizon-файлов проверяется пр
 подготовленные ресурсы игры 26.3. В каталоге игры (где `options.txt`) положите:
 
 ```text
-horizon-mods/createhorizon-0.1.0.hmod
-horizon-native-mods/createhorizon_native-0.1.0.hnmod
+horizon-mods/createhorizon-0.2.0.hmod
+horizon-native-mods/createhorizon_native-0.2.0.hnmod
 ```
 
 Запустите игру. В Options > Mods включите **Create Horizon Kinetics** и
-**Create Horizon 0.1.0**; там же, на странице мода, лежат две кнопки —
+**Create Horizon 0.2.0**; там же, на странице мода, лежат две кнопки —
 состояние сцепления и рукоятки. После переключения content-мода перезапустите
 игру. В creative inventory найдите блоки или скрафтите их.
 
@@ -179,8 +179,8 @@ git clone https://github.com/horizon-rust/horizon-mixins ../horizon-mixins
 git -C ../horizon-mixins checkout d9c83d7096b7ea5b83678da2efdfd6161f74997e
 cargo fetch --locked --manifest-path ../horizon-mixins/Cargo.toml
 cargo fetch --locked --manifest-path ../horizon/Cargo.toml
-cargo run --locked --manifest-path ../horizon/Cargo.toml -p cargo-horizon-mod -- check artifacts/createhorizon-0.1.0.hmod
-cargo run --locked --manifest-path ../horizon/Cargo.toml -p cargo-horizon-mod -- check artifacts/createhorizon_native-0.1.0.hnmod
+cargo run --locked --manifest-path ../horizon/Cargo.toml -p cargo-horizon-mod -- check artifacts/createhorizon-0.2.0.hmod
+cargo run --locked --manifest-path ../horizon/Cargo.toml -p cargo-horizon-mod -- check artifacts/createhorizon_native-0.2.0.hnmod
 python3 tools/horizon.py stage --horizon ../horizon
 cargo fetch --locked --manifest-path target/mixins/modded/Cargo.toml
 python3 tools/horizon.py test --horizon ../horizon
