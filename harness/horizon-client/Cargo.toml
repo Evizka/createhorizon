@@ -1,0 +1,15 @@
+[package]
+name = "horizon-client-stub"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+publish = false
+description = "Stand-in for the horizon_client crate's names the native bundle imports"
+
+[lib]
+# The bundle imports `horizon_client::blocks::Fluid`; this crate answers that
+# path in the harness build, as the real horizon-client crate does in a
+# Horizon build.
+name = "horizon_client"
+path = "src/lib.rs"

@@ -3,6 +3,8 @@ members = [
     "crates/create-math",
     "crates/create-kinetics",
     "mixins/createhorizon_native/engine",
+    "harness",
+    "harness/horizon-client",
 ]
 resolver = "2"
 

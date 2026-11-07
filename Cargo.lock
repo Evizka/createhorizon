@@ -19,3 +19,15 @@ version = "0.1.0"
 dependencies = [
  "create-engine",
 ]
+
+[[package]]
+name = "createhorizon-harness"
+version = "0.1.0"
+dependencies = [
+ "create-engine",
+ "horizon-client-stub",
+]
+
+[[package]]
+name = "horizon-client-stub"
+version = "0.1.0"

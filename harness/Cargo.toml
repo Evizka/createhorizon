@@ -1,0 +1,16 @@
+[package]
+name = "createhorizon-harness"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+publish = false
+description = "Host stand-ins that compile and test the native mixin sources without a Horizon checkout"
+
+[lib]
+name = "createhorizon_harness"
+path = "src/lib.rs"
+
+[dependencies]
+create-engine = { path = "../mixins/createhorizon_native/engine" }
+horizon-client-stub = { path = "horizon-client" }

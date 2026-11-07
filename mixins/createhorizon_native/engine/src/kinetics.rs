@@ -7,14 +7,113 @@ use crate::{
     additional_gear_offsets, coupling_between,
 };
 
-const FACE_OFFSETS: [[i32; 3]; 6] = [
-    [-1, 0, 0],
-    [0, -1, 0],
-    [0, 0, -1],
-    [0, 0, 1],
-    [0, 1, 0],
-    [1, 0, 0],
-];
+/// The flow at which a water wheel reaches its documented prototype output:
+/// four rpm and sixteen stress units.
+pub const WATER_WHEEL_FULL_FLOW: u32 = 16;
+
+/// Flow a falling column adds on top of its level: falling water pushes the
+/// wheel harder than a still surface at the same level does.
+const FALLING_FLOW_BONUS: u32 = 4;
+
+/// The water on one side of a water wheel. `level` is 0 for no water, 8 for a
+/// source or a falling column, and 1 through 7 for flowing water.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WaterSide {
+    pub level: u8,
+    pub falling: bool,
+}
+
+/// A water wheel's total flow: its four sides' levels, with a bonus for
+/// falling water, clamped to [`WATER_WHEEL_FULL_FLOW`].
+#[must_use]
+pub fn water_wheel_flow(sides: &[WaterSide; 4]) -> u32 {
+    let mut flow = 0_u32;
+    for side in sides {
+        let bonus = FALLING_FLOW_BONUS * u32::from(side.falling);
+        flow = flow.saturating_add(u32::from(side.level) + bonus);
+    }
+    flow.min(WATER_WHEEL_FULL_FLOW)
+}
+
+/// A water wheel's speed in rpm: a quarter of its flow, so full flow is 4 rpm.
+#[must_use]
+pub fn water_wheel_speed(flow: u32) -> Fx {
+    Fx::from_ratio(i64::from(flow), 4)
+}
+
+/// A water wheel's stress capacity: one unit per flow, so full flow is 16.
+#[must_use]
+pub fn water_wheel_capacity(flow: u32) -> Fx {
+    Fx::from_i64(i64::from(flow))
+}
+
+/// A face of a component that carries rotation: the axis a neighbour must
+/// touch it along, and whether the component's own rotation is reversed at
+/// that face. A gearbox presents two faces on different axes; every other
+/// component presents one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Terminal {
+    pub axis: Axis,
+    pub inverted: bool,
+}
+
+/// The faces a component presents, in a fixed order. The first one is the
+/// component's axle, the axis [`Rotational::axis`] answers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Terminals {
+    entries: [Terminal; 2],
+    len: usize,
+}
+
+impl Terminals {
+    #[must_use]
+    pub const fn single(axis: Axis) -> Self {
+        Self {
+            entries: [
+                Terminal {
+                    axis,
+                    inverted: false,
+                },
+                Terminal {
+                    axis,
+                    inverted: false,
+                },
+            ],
+            len: 1,
+        }
+    }
+
+    #[must_use]
+    pub const fn pair(input: Axis, output: Axis) -> Self {
+        Self {
+            entries: [
+                Terminal {
+                    axis: input,
+                    inverted: false,
+                },
+                Terminal {
+                    axis: output,
+                    inverted: true,
+                },
+            ],
+            len: 2,
+        }
+    }
+
+    #[must_use]
+    pub fn as_slice(&self) -> &[Terminal] {
+        &self.entries[..self.len]
+    }
+
+    /// The face on `axis`, if the component has one.
+    #[must_use]
+    pub fn on(&self, axis: Axis) -> Option<Terminal> {
+        self.as_slice()
+            .iter()
+            .copied()
+            .find(|face| face.axis == axis)
+    }
+}
 
 /// A closed set of rotational components. Balance values are data, not
 /// trait-object allocations in the graph's hot path.
@@ -36,6 +135,56 @@ pub enum KineticPart {
         axis: Axis,
         impact: Fx,
     },
+    /// A source whose speed and capacity come from the water beside it. A dry
+    /// wheel (`flow` 0) is passive, like a shaft.
+    WaterWheel {
+        position: BlockPos,
+        axis: Axis,
+        flow: u32,
+    },
+    /// A relay between two axes. Rotation enters on `input` and leaves on
+    /// `output`, reversed: the output face is an inverted terminal.
+    Gearbox {
+        position: BlockPos,
+        input: Axis,
+        output: Axis,
+    },
+    /// A gauge: it reads the network's speed and adds no stress of its own.
+    Speedometer {
+        position: BlockPos,
+        axis: Axis,
+    },
+    /// A gate. Disengaged, it breaks every contact it has, so the networks
+    /// on either side of it run apart or stop.
+    Clutch {
+        position: BlockPos,
+        axis: Axis,
+        engaged: bool,
+    },
+}
+
+impl KineticPart {
+    /// The faces the component connects on.
+    #[must_use]
+    pub fn terminals(&self) -> Terminals {
+        match *self {
+            Self::Shaft { axis, .. }
+            | Self::HandCrank { axis, .. }
+            | Self::Load { axis, .. }
+            | Self::WaterWheel { axis, .. }
+            | Self::Speedometer { axis, .. }
+            | Self::Clutch { axis, .. } => Terminals::single(axis),
+            Self::Cogwheel(wheel) => Terminals::single(wheel.axis),
+            Self::Gearbox { input, output, .. } => Terminals::pair(input, output),
+        }
+    }
+
+    /// Whether contacts may pass through this component. A disengaged clutch
+    /// is the one component that refuses them.
+    #[must_use]
+    pub const fn conducts(&self) -> bool {
+        !matches!(*self, Self::Clutch { engaged: false, .. })
+    }
 }
 
 pub trait Rotational {
@@ -60,16 +209,24 @@ impl Rotational for KineticPart {
         match self {
             Self::Shaft { position, .. }
             | Self::HandCrank { position, .. }
-            | Self::Load { position, .. } => *position,
+            | Self::Load { position, .. }
+            | Self::WaterWheel { position, .. }
+            | Self::Gearbox { position, .. }
+            | Self::Speedometer { position, .. }
+            | Self::Clutch { position, .. } => *position,
             Self::Cogwheel(wheel) => wheel.position,
         }
     }
 
     fn axis(&self) -> Axis {
         match self {
-            Self::Shaft { axis, .. } | Self::HandCrank { axis, .. } | Self::Load { axis, .. } => {
-                *axis
-            }
+            Self::Shaft { axis, .. }
+            | Self::HandCrank { axis, .. }
+            | Self::Load { axis, .. }
+            | Self::WaterWheel { axis, .. }
+            | Self::Speedometer { axis, .. }
+            | Self::Clutch { axis, .. } => *axis,
+            Self::Gearbox { input, .. } => *input,
             Self::Cogwheel(wheel) => wheel.axis,
         }
     }
@@ -79,6 +236,7 @@ impl KineticSource for KineticPart {
     fn source_speed(&self) -> Option<Fx> {
         match self {
             Self::HandCrank { speed, .. } => Some(*speed),
+            Self::WaterWheel { flow, .. } if *flow != 0 => Some(water_wheel_speed(*flow)),
             _ => None,
         }
     }
@@ -97,6 +255,7 @@ impl StressCapacity for KineticPart {
     fn stress_capacity(&self, speed: Fx) -> Fx {
         match self {
             Self::HandCrank { capacity, .. } if !speed.is_zero() => *capacity,
+            Self::WaterWheel { flow, .. } if !speed.is_zero() => water_wheel_capacity(*flow),
             _ => Fx::ZERO,
         }
     }
@@ -213,6 +372,16 @@ impl Kinetics {
 
     pub fn parts(&self) -> impl Iterator<Item = (Handle<KineticPart>, &KineticPart)> + '_ {
         self.parts.iter()
+    }
+
+    /// The solved speed at `position`, for a gauge or a HUD to read. `None`
+    /// before [`Self::solve`] has run, or when nothing is there.
+    #[must_use]
+    pub fn speed_at(&self, position: BlockPos) -> Option<Fx> {
+        self.states
+            .iter()
+            .find(|state| state.position == position)
+            .map(|state| state.speed)
     }
 
     #[must_use]
@@ -429,6 +598,14 @@ impl Kinetics {
                 ),
                 KineticPart::HandCrank { axis, .. } => (2, axis_code(axis), 0),
                 KineticPart::Load { axis, .. } => (3, axis_code(axis), 0),
+                KineticPart::WaterWheel { axis, .. } => (4, axis_code(axis), 0),
+                KineticPart::Gearbox { input, output, .. } => {
+                    (5, axis_code(input), axis_code(output))
+                }
+                KineticPart::Speedometer { axis, .. } => (6, axis_code(axis), 0),
+                KineticPart::Clutch { axis, engaged, .. } => {
+                    (7, axis_code(axis), u8::from(engaged))
+                }
             };
             feed(&mut hash, &[kind, axis, size]);
             match part {
@@ -441,7 +618,14 @@ impl Kinetics {
                 KineticPart::Load { impact, .. } => {
                     feed(&mut hash, &impact.raw().to_le_bytes());
                 }
-                KineticPart::Shaft { .. } | KineticPart::Cogwheel(_) => {}
+                KineticPart::WaterWheel { flow, .. } => {
+                    feed(&mut hash, &flow.to_le_bytes());
+                }
+                KineticPart::Shaft { .. }
+                | KineticPart::Cogwheel(_)
+                | KineticPart::Gearbox { .. }
+                | KineticPart::Speedometer { .. }
+                | KineticPart::Clutch { .. } => {}
             }
             feed(&mut hash, &state.speed.raw().to_le_bytes());
             feed(&mut hash, &state.network.to_le_bytes());
@@ -454,7 +638,12 @@ impl Kinetics {
         self.links.clear();
         let mut candidates = Vec::new();
         for (handle, part) in self.parts.iter() {
-            for offset in FACE_OFFSETS {
+            for face in part.terminals().as_slice() {
+                let mut offset = [0, 0, 0];
+                offset[face.axis.index()] = 1;
+                candidates.push((handle, part.position(), offset));
+                let mut offset = [0, 0, 0];
+                offset[face.axis.index()] = -1;
                 candidates.push((handle, part.position(), offset));
             }
             if let KineticPart::Cogwheel(wheel) = part {
@@ -487,6 +676,10 @@ impl Kinetics {
             else {
                 continue;
             };
+            // A disengaged clutch breaks the contact on both of its sides.
+            if !from_part.conducts() || !to_part.conducts() {
+                continue;
+            }
             if let Some(coupling) = coupling_for_parts(*from_part, *to_part) {
                 self.links.push(KineticLink { from, to, coupling });
             }
@@ -533,22 +726,24 @@ fn coupling_for_parts(from: KineticPart, to: KineticPart) -> Option<GearCoupling
         }
     }
 
+    // Components that are not cogwheels mesh only face to face, on an axis
+    // both of them present: a shaft to a shaft, a shaft to a gearbox's input
+    // face, that gearbox's output face to the next component.
     let delta = from.position().delta_to(to.position());
-    if from.axis() != to.axis() {
-        return None;
+    let mut touching: Option<Axis> = None;
+    for axis in Axis::ALL {
+        match axis.component(delta).unsigned_abs() {
+            0 => {}
+            1 if touching.is_none() => touching = Some(axis),
+            _ => return None,
+        }
     }
-    let axis = from.axis();
-    if axis.component(delta).unsigned_abs() != 1
-        || axis
-            .other_axes()
-            .into_iter()
-            .any(|other| other.component(delta) != 0)
-    {
-        return None;
-    }
+    let axis = touching?;
+    let from_face = from.terminals().on(axis)?;
+    let to_face = to.terminals().on(axis)?;
     Some(GearCoupling {
         ratio: Rat::ONE,
-        inverted: false,
+        inverted: from_face.inverted ^ to_face.inverted,
     })
 }
 
@@ -556,7 +751,10 @@ fn coupling_for_parts(from: KineticPart, to: KineticPart) -> Option<GearCoupling
 mod tests {
     use alloc::vec;
 
-    use super::{AddPartError, KineticPart, Kinetics};
+    use super::{
+        AddPartError, FALLING_FLOW_BONUS, KineticPart, Kinetics, Terminal, WATER_WHEEL_FULL_FLOW,
+        WaterSide, water_wheel_capacity, water_wheel_flow, water_wheel_speed,
+    };
     use crate::{Axis, BlockPos, Fx, GearSize, Gearwheel};
 
     fn pos(x: i32, y: i32, z: i32) -> BlockPos {
@@ -645,6 +843,196 @@ mod tests {
                 .iter()
                 .all(|state| { state.speed == Fx::ZERO && state.overstressed })
         );
+    }
+
+    fn wheel(position: BlockPos, flow: u32) -> KineticPart {
+        KineticPart::WaterWheel {
+            position,
+            axis: Axis::Z,
+            flow,
+        }
+    }
+
+    fn clutch(position: BlockPos, engaged: bool) -> KineticPart {
+        KineticPart::Clutch {
+            position,
+            axis: Axis::Z,
+            engaged,
+        }
+    }
+
+    #[test]
+    fn water_wheel_flow_clamps_and_rewards_falling_water() {
+        let source = WaterSide {
+            level: 8,
+            falling: false,
+        };
+        assert_eq!(water_wheel_flow(&[source; 4]), WATER_WHEEL_FULL_FLOW);
+        assert_eq!(water_wheel_flow(&[WaterSide::default(); 4]), 0);
+        let falling = [WaterSide {
+            level: 1,
+            falling: true,
+        }];
+        let mut sides = [WaterSide::default(); 4];
+        sides[0] = falling[0];
+        assert_eq!(water_wheel_flow(&sides), 1 + FALLING_FLOW_BONUS);
+        assert_eq!(water_wheel_speed(WATER_WHEEL_FULL_FLOW), Fx::from_i32(4));
+        assert_eq!(
+            water_wheel_capacity(WATER_WHEEL_FULL_FLOW),
+            Fx::from_i32(16)
+        );
+        assert_eq!(water_wheel_speed(0), Fx::ZERO);
+    }
+
+    #[test]
+    fn a_wheel_drives_at_its_flow_and_a_dry_one_is_a_passive_shaft() {
+        let mut wet = Kinetics::from_parts(vec![
+            wheel(pos(0, 0, 0), WATER_WHEEL_FULL_FLOW),
+            shaft(pos(0, 0, 1)),
+        ]);
+        let wet_summary = wet.solve();
+        assert_eq!(wet_summary.network_count, 1);
+        assert_eq!(wet_summary.driven_parts, 2);
+        assert_eq!(wet_summary.max_speed, Fx::from_i32(4));
+        assert_eq!(wet_summary.capacity, Fx::from_i32(16));
+
+        let mut dry = Kinetics::from_parts(vec![wheel(pos(0, 0, 0), 0), shaft(pos(0, 0, 1))]);
+        let dry_summary = dry.solve();
+        assert_eq!(dry_summary.capacity, Fx::ZERO);
+        assert_eq!(dry_summary.driven_parts, 0);
+        assert!(dry.states().iter().all(|state| state.speed.is_zero()));
+    }
+
+    #[test]
+    fn a_wheel_overloaded_by_a_crushing_wheel_stops_with_the_rest() {
+        let mut wet = Kinetics::from_parts(vec![
+            wheel(pos(0, 0, 0), WATER_WHEEL_FULL_FLOW),
+            KineticPart::Load {
+                position: pos(0, 0, 1),
+                axis: Axis::Z,
+                impact: Fx::from_i32(17),
+            },
+        ]);
+        let summary = wet.solve();
+        assert_eq!(summary.overstressed_networks, 1);
+        assert_eq!(summary.driven_parts, 0);
+    }
+
+    #[test]
+    fn gearbox_relays_rotation_onto_its_output_axis_inverted() {
+        let parts = vec![
+            crank(pos(0, 0, 0), 16, 16),
+            KineticPart::Gearbox {
+                position: pos(0, 0, 1),
+                input: Axis::Z,
+                output: Axis::Y,
+            },
+            KineticPart::Shaft {
+                position: pos(0, 1, 1),
+                axis: Axis::Y,
+            },
+            // On the third axis the gearbox has no face, so nothing connects.
+            KineticPart::Shaft {
+                position: pos(1, 0, 1),
+                axis: Axis::X,
+            },
+        ];
+        let mut kinetics = Kinetics::from_parts(parts);
+        let summary = kinetics.solve();
+        assert_eq!(summary.link_count, 2);
+        assert_eq!(summary.network_count, 2);
+        // Rotation crosses onto the output face reversed.
+        assert_eq!(state_at(&kinetics, pos(0, 1, 1)).speed, Fx::from_i32(-16));
+        assert_eq!(state_at(&kinetics, pos(1, 0, 1)).speed, Fx::ZERO);
+    }
+
+    #[test]
+    fn a_gearbox_passes_rotation_straight_through_its_input_axis() {
+        let parts = vec![
+            crank(pos(0, 0, 0), 16, 16),
+            KineticPart::Gearbox {
+                position: pos(0, 0, 1),
+                input: Axis::Z,
+                output: Axis::Y,
+            },
+            shaft(pos(0, 0, 2)),
+        ];
+        let mut kinetics = Kinetics::from_parts(parts);
+        let summary = kinetics.solve();
+        assert_eq!(summary.link_count, 2);
+        assert_eq!(summary.driven_parts, 3);
+        assert_eq!(state_at(&kinetics, pos(0, 0, 2)).speed, Fx::from_i32(16));
+    }
+
+    #[test]
+    fn speedometer_reads_the_network_without_adding_stress() {
+        let mut kinetics = Kinetics::from_parts(vec![
+            crank(pos(0, 0, 0), 16, 16),
+            KineticPart::Speedometer {
+                position: pos(0, 0, 1),
+                axis: Axis::Z,
+            },
+            KineticPart::Load {
+                position: pos(0, 0, 2),
+                axis: Axis::Z,
+                impact: Fx::from_i32(16),
+            },
+        ]);
+        let summary = kinetics.solve();
+        assert_eq!(summary.capacity, Fx::from_i32(16));
+        assert_eq!(summary.stress, Fx::from_i32(16));
+        assert_eq!(summary.overstressed_networks, 0);
+        assert_eq!(kinetics.speed_at(pos(0, 0, 1)), Some(Fx::from_i32(16)));
+        assert_eq!(kinetics.speed_at(pos(9, 9, 9)), None);
+    }
+
+    #[test]
+    fn a_disengaged_clutch_breaks_every_contact_it_has() {
+        let run = |engaged: bool| {
+            let mut kinetics = Kinetics::from_parts(vec![
+                crank(pos(0, 0, 0), 16, 16),
+                clutch(pos(0, 0, 1), engaged),
+                shaft(pos(0, 0, 2)),
+            ]);
+            kinetics.solve()
+        };
+
+        let joined = run(true);
+        assert_eq!(joined.network_count, 1);
+        assert_eq!(joined.driven_parts, 3);
+
+        let split = run(false);
+        assert_eq!(split.network_count, 3);
+        assert_eq!(split.driven_parts, 1);
+    }
+
+    #[test]
+    fn only_a_gearbox_presents_two_faces_and_only_a_clutch_refuses_contacts() {
+        let gearbox = KineticPart::Gearbox {
+            position: pos(0, 0, 0),
+            input: Axis::Z,
+            output: Axis::Y,
+        };
+        assert_eq!(gearbox.terminals().as_slice().len(), 2);
+        assert_eq!(
+            gearbox.terminals().on(Axis::Y),
+            Some(Terminal {
+                axis: Axis::Y,
+                inverted: true
+            })
+        );
+        assert_eq!(
+            gearbox.terminals().on(Axis::Z),
+            Some(Terminal {
+                axis: Axis::Z,
+                inverted: false
+            })
+        );
+        assert_eq!(gearbox.terminals().on(Axis::X), None);
+        assert_eq!(shaft(pos(0, 0, 0)).terminals().as_slice().len(), 1);
+        assert!(clutch(pos(0, 0, 0), true).conducts());
+        assert!(!clutch(pos(0, 0, 0), false).conducts());
+        assert!(shaft(pos(0, 0, 0)).conducts());
     }
 
     #[test]

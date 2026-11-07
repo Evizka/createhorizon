@@ -7,7 +7,7 @@ fn run_createhorizon_command(game: &mut Game<'_>, command: &str, ran: &mut bool)
     *ran = true;
     let response = match words.next().unwrap_or("help") {
         "help" => String::from(
-            "Create Horizon: press the configured crank key to toggle the nearest hand crank; /createhorizon scan reports nearby kinetics.",
+            "Create Horizon: the crank key toggles the nearest hand crank, the clutch key opens and closes every clutch, and /createhorizon scan reports the kinetics around you.",
         ),
         "scan" => crate::game::createhorizon_native::scan_message(game),
         _ => String::from("Usage: /createhorizon [help|scan]"),

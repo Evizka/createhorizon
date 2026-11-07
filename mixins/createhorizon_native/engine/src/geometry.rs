@@ -44,6 +44,18 @@ pub enum Axis {
 }
 
 impl Axis {
+    /// The three axes in a fixed order, for the code that must iterate them.
+    pub const ALL: [Self; 3] = [Self::X, Self::Y, Self::Z];
+
+    #[must_use]
+    pub const fn index(self) -> usize {
+        match self {
+            Self::X => 0,
+            Self::Y => 1,
+            Self::Z => 2,
+        }
+    }
+
     #[must_use]
     pub const fn component(self, vector: [i64; 3]) -> i64 {
         match self {
