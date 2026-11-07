@@ -27,15 +27,9 @@ impl BlockPos {
 
     #[must_use]
     pub fn checked_offset(self, delta: [i32; 3]) -> Option<Self> {
-        let Some(x) = self.x.checked_add(delta[0]) else {
-            return None;
-        };
-        let Some(y) = self.y.checked_add(delta[1]) else {
-            return None;
-        };
-        let Some(z) = self.z.checked_add(delta[2]) else {
-            return None;
-        };
+        let x = self.x.checked_add(delta[0])?;
+        let y = self.y.checked_add(delta[1])?;
+        let z = self.z.checked_add(delta[2])?;
         Some(Self { x, y, z })
     }
 }
@@ -83,7 +77,13 @@ mod tests {
 
     #[test]
     fn checked_offset_rejects_coordinate_overflow() {
-        assert_eq!(BlockPos::ZERO.checked_offset([1, -2, 3]), Some(BlockPos::new(1, -2, 3)));
-        assert_eq!(BlockPos::new(i32::MAX, 0, 0).checked_offset([1, 0, 0]), None);
+        assert_eq!(
+            BlockPos::ZERO.checked_offset([1, -2, 3]),
+            Some(BlockPos::new(1, -2, 3))
+        );
+        assert_eq!(
+            BlockPos::new(i32::MAX, 0, 0).checked_offset([1, 0, 0]),
+            None
+        );
     }
 }

@@ -69,8 +69,7 @@ impl Rat {
     #[must_use]
     pub fn checked_mul(self, rhs: Self) -> Option<Self> {
         let numerator = i128::from(self.numerator) * i128::from(rhs.numerator);
-        let denominator = i128::from(self.denominator)
-            .checked_mul(i128::from(rhs.denominator))?;
+        let denominator = i128::from(self.denominator).checked_mul(i128::from(rhs.denominator))?;
         Self::from_wide(numerator, denominator)
     }
 
@@ -135,13 +134,25 @@ mod tests {
         let one_to_two = two_to_one.inverse().unwrap();
         assert_eq!(one_to_two, Rat::HALF);
         assert_eq!(two_to_one.checked_mul(one_to_two), Some(Rat::ONE));
-        assert_eq!(Rat::new(3, 2).unwrap().checked_mul(Rat::new(2, 3).unwrap()), Some(Rat::ONE));
+        assert_eq!(
+            Rat::new(3, 2).unwrap().checked_mul(Rat::new(2, 3).unwrap()),
+            Some(Rat::ONE)
+        );
     }
 
     #[test]
     fn ratio_applies_with_one_deterministic_rounding() {
-        assert_eq!(Rat::new(1, 3).unwrap().apply(Fx::ONE).raw(), 0x0000_0000_5555_5555);
-        assert_eq!(Rat::new(-1, 3).unwrap().apply(Fx::ONE).raw(), -0x0000_0000_5555_5555);
-        assert_eq!(Rat::new(2, 1).unwrap().apply(Fx::from_raw(i64::MAX)).raw(), i64::MAX);
+        assert_eq!(
+            Rat::new(1, 3).unwrap().apply(Fx::ONE).raw(),
+            0x0000_0000_5555_5555
+        );
+        assert_eq!(
+            Rat::new(-1, 3).unwrap().apply(Fx::ONE).raw(),
+            -0x0000_0000_5555_5555
+        );
+        assert_eq!(
+            Rat::new(2, 1).unwrap().apply(Fx::from_raw(i64::MAX)).raw(),
+            i64::MAX
+        );
     }
 }

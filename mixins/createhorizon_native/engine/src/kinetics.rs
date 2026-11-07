@@ -67,9 +67,9 @@ impl Rotational for KineticPart {
 
     fn axis(&self) -> Axis {
         match self {
-            Self::Shaft { axis, .. }
-            | Self::HandCrank { axis, .. }
-            | Self::Load { axis, .. } => *axis,
+            Self::Shaft { axis, .. } | Self::HandCrank { axis, .. } | Self::Load { axis, .. } => {
+                *axis
+            }
             Self::Cogwheel(wheel) => wheel.axis,
         }
     }
@@ -187,7 +187,10 @@ impl Kinetics {
         if self.by_position.contains_key(&position) {
             return Err(AddPartError::PositionOccupied);
         }
-        let handle = self.parts.insert(part).map_err(|_| AddPartError::ArenaFull)?;
+        let handle = self
+            .parts
+            .insert(part)
+            .map_err(|_| AddPartError::ArenaFull)?;
         self.by_position.insert(position, handle);
         self.links.clear();
         self.states.clear();
@@ -226,7 +229,11 @@ impl Kinetics {
     /// exact rational speed ratios and applies the strict stress > capacity rule.
     pub fn solve(&mut self) -> NetworkSummary {
         self.rebuild_links();
-        let nodes: Vec<_> = self.parts.iter().map(|(handle, part)| (handle, *part)).collect();
+        let nodes: Vec<_> = self
+            .parts
+            .iter()
+            .map(|(handle, part)| (handle, *part))
+            .collect();
         let count = nodes.len();
         let mut summary = NetworkSummary {
             part_count: count,
@@ -250,8 +257,7 @@ impl Kinetics {
             let index = usize::try_from(handle.index()).expect("u32 slot index fits usize");
             dense_by_slot[index] = Some(dense);
         }
-        let mut adjacency: Vec<Vec<(usize, usize)>> =
-            (0..count).map(|_| Vec::new()).collect();
+        let mut adjacency: Vec<Vec<(usize, usize)>> = (0..count).map(|_| Vec::new()).collect();
         for (edge, link) in self.links.iter().enumerate() {
             let from_slot = usize::try_from(link.from.index()).expect("u32 slot index fits usize");
             let to_slot = usize::try_from(link.to.index()).expect("u32 slot index fits usize");
@@ -426,7 +432,9 @@ impl Kinetics {
             };
             feed(&mut hash, &[kind, axis, size]);
             match part {
-                KineticPart::HandCrank { speed, capacity, .. } => {
+                KineticPart::HandCrank {
+                    speed, capacity, ..
+                } => {
                     feed(&mut hash, &speed.raw().to_le_bytes());
                     feed(&mut hash, &capacity.raw().to_le_bytes());
                 }
@@ -475,7 +483,8 @@ impl Kinetics {
             if !unique.insert((from.index(), to.index())) {
                 continue;
             }
-            let (Some(from_part), Some(to_part)) = (self.parts.get(from), self.parts.get(to)) else {
+            let (Some(from_part), Some(to_part)) = (self.parts.get(from), self.parts.get(to))
+            else {
                 continue;
             };
             if let Some(coupling) = coupling_for_parts(*from_part, *to_part) {
@@ -530,7 +539,10 @@ fn coupling_for_parts(from: KineticPart, to: KineticPart) -> Option<GearCoupling
     }
     let axis = from.axis();
     if axis.component(delta).unsigned_abs() != 1
-        || axis.other_axes().into_iter().any(|other| other.component(delta) != 0)
+        || axis
+            .other_axes()
+            .into_iter()
+            .any(|other| other.component(delta) != 0)
     {
         return None;
     }
@@ -543,7 +555,6 @@ fn coupling_for_parts(from: KineticPart, to: KineticPart) -> Option<GearCoupling
 #[cfg(test)]
 mod tests {
     use alloc::vec;
-    use alloc::vec::Vec;
 
     use super::{AddPartError, KineticPart, Kinetics};
     use crate::{Axis, BlockPos, Fx, GearSize, Gearwheel};
@@ -628,9 +639,12 @@ mod tests {
         let over_summary = overstressed.solve();
         assert_eq!(over_summary.overstressed_networks, 1);
         assert_eq!(over_summary.driven_parts, 0);
-        assert!(overstressed.states().iter().all(|state| {
-            state.speed == Fx::ZERO && state.overstressed
-        }));
+        assert!(
+            overstressed
+                .states()
+                .iter()
+                .all(|state| { state.speed == Fx::ZERO && state.overstressed })
+        );
     }
 
     #[test]
@@ -653,7 +667,10 @@ mod tests {
         let mut kinetics = Kinetics::new();
         let position = pos(0, 0, 0);
         assert!(kinetics.add_part(shaft(position)).is_ok());
-        assert_eq!(kinetics.add_part(crank(position, 16, 16)), Err(AddPartError::PositionOccupied));
+        assert_eq!(
+            kinetics.add_part(crank(position, 16, 16)),
+            Err(AddPartError::PositionOccupied)
+        );
         assert_eq!(kinetics.parts().count(), 1);
     }
 }

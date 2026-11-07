@@ -90,8 +90,8 @@ impl Fx {
     #[must_use]
     pub fn saturating_mul(self, rhs: Self) -> Self {
         let product = i128::from(self.0) * i128::from(rhs.0);
-        let raw = div_round_away(product, i128::from(Self::SCALE))
-            .expect("Q32.32 scale is non-zero");
+        let raw =
+            div_round_away(product, i128::from(Self::SCALE)).expect("Q32.32 scale is non-zero");
         Self::saturating_from_i128(raw)
     }
 
@@ -147,8 +147,14 @@ impl Fx {
         let upper = lower + 1;
         let lower_error = radicand - lower * lower;
         let upper_error = upper * upper - radicand;
-        let rounded = if upper_error <= lower_error { upper } else { lower };
-        Self::saturating_from_i128(i128::try_from(rounded).expect("fixed-point square root fits i128"))
+        let rounded = if upper_error <= lower_error {
+            upper
+        } else {
+            lower
+        };
+        Self::saturating_from_i128(
+            i128::try_from(rounded).expect("fixed-point square root fits i128"),
+        )
     }
 
     pub(crate) fn from_raw_ratio(numerator: i128, denominator: i128) -> Self {
@@ -191,7 +197,7 @@ pub(crate) fn div_round_away(numerator: i128, denominator: i128) -> Option<i128>
     let divisor = denominator.unsigned_abs();
     let mut quotient = magnitude / divisor;
     let remainder = magnitude % divisor;
-    let round_threshold = divisor / 2 + divisor % 2;
+    let round_threshold = divisor.div_ceil(2);
     if remainder >= round_threshold {
         quotient = quotient.saturating_add(1);
     }
@@ -215,7 +221,7 @@ fn integer_sqrt(value: u128) -> u128 {
         return value;
     }
     let bit_len = 128 - value.leading_zeros();
-    let mut estimate = 1_u128 << ((bit_len + 1) / 2);
+    let mut estimate = 1_u128 << bit_len.div_ceil(2);
     loop {
         let next = (estimate + value / estimate) / 2;
         if next >= estimate {
@@ -291,12 +297,23 @@ mod tests {
 
     #[test]
     fn multiplication_and_division_round_half_away_from_zero() {
+        // A product that lands exactly on half a raw unit keeps its unit:
+        // 2^-32 * 2^-1 is 2^-33, which rounds away from zero to 2^-32.
         let half_raw = Fx::from_raw(1) * Fx::from_raw(1_i64 << 31);
         let negative_half_raw = Fx::from_raw(-1) * Fx::from_raw(1_i64 << 31);
         assert_eq!(half_raw.raw(), 1);
         assert_eq!(negative_half_raw.raw(), -1);
-        assert_eq!((Fx::from_raw(1) / Fx::from_raw(2)).raw(), 1);
-        assert_eq!((Fx::from_raw(-1) / Fx::from_raw(2)).raw(), -1);
+
+        // Exact quotients stay exact: one raw unit over two is half a unit,
+        // which is 2^31 raw, not one raw.
+        assert_eq!((Fx::from_raw(1) / Fx::from_raw(2)).raw(), 1_i64 << 31);
+        assert_eq!((Fx::from_raw(-1) / Fx::from_raw(2)).raw(), -(1_i64 << 31));
+
+        // The same halfway case as the product above, on the division side:
+        // 2^32 / 2^33 is a quotient of zero with a remainder of half the
+        // divisor, so it rounds away from zero to one raw unit.
+        assert_eq!((Fx::from_raw(1) / Fx::from_raw(1_i64 << 33)).raw(), 1);
+        assert_eq!((Fx::from_raw(-1) / Fx::from_raw(1_i64 << 33)).raw(), -1);
     }
 
     #[test]

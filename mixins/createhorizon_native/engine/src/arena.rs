@@ -191,11 +191,14 @@ impl<T> Arena<T> {
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (Handle<T>, &mut T)> + '_ {
-        self.slots.iter_mut().enumerate().filter_map(|(index, slot)| {
-            let value = slot.value.as_mut()?;
-            let index = u32::try_from(index).ok()?;
-            Some((Handle::new(index, slot.generation), value))
-        })
+        self.slots
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(index, slot)| {
+                let value = slot.value.as_mut()?;
+                let index = u32::try_from(index).ok()?;
+                Some((Handle::new(index, slot.generation), value))
+            })
     }
 
     #[must_use]
@@ -243,7 +246,10 @@ mod tests {
         for (_, value) in arena.iter_mut() {
             *value *= 2;
         }
-        let entries: Vec<_> = arena.iter().map(|(handle, value)| (handle.index(), *value)).collect();
+        let entries: Vec<_> = arena
+            .iter()
+            .map(|(handle, value)| (handle.index(), *value))
+            .collect();
         assert_eq!(entries, [(first.index(), 2), (second.index(), 4)]);
     }
 }

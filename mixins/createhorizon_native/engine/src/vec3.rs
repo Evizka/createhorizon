@@ -116,6 +116,9 @@ mod tests {
         let y = Vec3::new(Fx::ZERO, Fx::ONE, Fx::ZERO);
         assert_eq!(x.dot(y), Fx::ZERO);
         assert_eq!(x.cross(y), Vec3::new(Fx::ZERO, Fx::ZERO, Fx::ONE));
-        assert_eq!(Vec3::new(Fx::from_i32(3), Fx::from_i32(4), Fx::ZERO).length(), Fx::from_i32(5));
+        assert_eq!(
+            Vec3::new(Fx::from_i32(3), Fx::from_i32(4), Fx::ZERO).length(),
+            Fx::from_i32(5)
+        );
     }
 }

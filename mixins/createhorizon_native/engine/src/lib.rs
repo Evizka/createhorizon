@@ -21,8 +21,8 @@ pub use fx::Fx;
 pub use gear::{GearCoupling, GearSize, Gearwheel, additional_gear_offsets, coupling_between};
 pub use geometry::{Axis, BlockPos};
 pub use kinetics::{
-    AddPartError, KineticLink, KineticPart, KineticSource, KineticState, Kinetics,
-    NetworkSummary, Rotational, StressCapacity, StressImpact,
+    AddPartError, KineticLink, KineticPart, KineticSource, KineticState, Kinetics, NetworkSummary,
+    Rotational, StressCapacity, StressImpact,
 };
 pub use rat::Rat;
 pub use vec3::Vec3;

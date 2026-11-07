@@ -1,7 +1,7 @@
 use core::convert::TryFrom;
 
-use crate::fx::div_round_away;
 use crate::Fx;
+use crate::fx::div_round_away;
 
 const QUARTER_TURN: u32 = 1_u32 << 30;
 const HALF_TURN: u32 = 1_u32 << 31;
@@ -144,11 +144,7 @@ impl Angle {
 
         let mut angle_q64 = 0_i128;
         if x < 0 {
-            angle_q64 = if y > 0 {
-                HALF_TURN_Q64
-            } else {
-                -HALF_TURN_Q64
-            };
+            angle_q64 = if y > 0 { HALF_TURN_Q64 } else { -HALF_TURN_Q64 };
             x = -x;
             y = -y;
         }
@@ -205,8 +201,14 @@ mod tests {
     fn turns_wrap_by_discarding_high_bits() {
         assert_eq!(Angle::from_turns(Fx::ONE), Angle::ZERO);
         assert_eq!(Angle::from_turns(Fx::from_i32(-1)).raw(), 0);
-        assert_eq!(Angle::from_turns(Fx::from_raw(0x0001_8000_0000)).raw(), 0x8000_0000);
-        assert_eq!(Angle::from_raw(u32::MAX).wrapping_add(Angle::from_raw(1)), Angle::ZERO);
+        assert_eq!(
+            Angle::from_turns(Fx::from_raw(0x0001_8000_0000)).raw(),
+            0x8000_0000
+        );
+        assert_eq!(
+            Angle::from_raw(u32::MAX).wrapping_add(Angle::from_raw(1)),
+            Angle::ZERO
+        );
     }
 
     #[test]

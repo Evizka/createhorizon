@@ -59,10 +59,7 @@ pub fn coupling_between(from: Gearwheel, to: Gearwheel) -> Option<GearCoupling> 
 
     match (from.size, to.size) {
         (GearSize::Small, GearSize::Small) => {
-            if from.axis != to.axis
-                || manhattan != 1
-                || from.axis.component(delta) != 0
-            {
+            if from.axis != to.axis || manhattan != 1 || from.axis.component(delta) != 0 {
                 return None;
             }
             Some(GearCoupling {
@@ -76,7 +73,11 @@ pub fn coupling_between(from: Gearwheel, to: Gearwheel) -> Option<GearCoupling> 
             }
             let source_delta = from.axis.component(delta);
             let target_delta = to.axis.component(delta);
-            let remaining_axis = from.axis.other_axes().into_iter().find(|axis| *axis != to.axis)?;
+            let remaining_axis = from
+                .axis
+                .other_axes()
+                .into_iter()
+                .find(|axis| *axis != to.axis)?;
             let remaining_delta = remaining_axis.component(delta);
             if source_delta.unsigned_abs() != 1
                 || target_delta.unsigned_abs() != 1
@@ -141,11 +142,15 @@ pub fn additional_gear_offsets(gear: Gearwheel) -> Vec<[i32; 3]> {
 #[cfg(test)]
 mod tests {
     use super::{GearSize, Gearwheel, additional_gear_offsets, coupling_between};
-    use crate::{Axis, BlockPos};
     use crate::Rat;
+    use crate::{Axis, BlockPos};
 
     fn gear(position: [i32; 3], axis: Axis, size: GearSize) -> Gearwheel {
-        Gearwheel::new(BlockPos::new(position[0], position[1], position[2]), axis, size)
+        Gearwheel::new(
+            BlockPos::new(position[0], position[1], position[2]),
+            axis,
+            size,
+        )
     }
 
     #[test]
@@ -159,9 +164,18 @@ mod tests {
                 inverted: true,
             })
         );
-        assert_eq!(coupling_between(source, gear([0, 0, 1], Axis::Z, GearSize::Small)), None);
-        assert_eq!(coupling_between(source, gear([1, 0, 0], Axis::Y, GearSize::Small)), None);
-        assert_eq!(coupling_between(source, gear([1, 1, 0], Axis::Z, GearSize::Small)), None);
+        assert_eq!(
+            coupling_between(source, gear([0, 0, 1], Axis::Z, GearSize::Small)),
+            None
+        );
+        assert_eq!(
+            coupling_between(source, gear([1, 0, 0], Axis::Y, GearSize::Small)),
+            None
+        );
+        assert_eq!(
+            coupling_between(source, gear([1, 1, 0], Axis::Z, GearSize::Small)),
+            None
+        );
     }
 
     #[test]
@@ -172,8 +186,14 @@ mod tests {
         assert!(coupling_between(large, small).unwrap().inverted);
         assert_eq!(coupling_between(small, large).unwrap().ratio, Rat::HALF);
         assert!(coupling_between(small, large).unwrap().inverted);
-        assert_eq!(coupling_between(large, gear([1, 0, 1], Axis::Z, GearSize::Small)), None);
-        assert_eq!(coupling_between(large, gear([2, 1, 0], Axis::Z, GearSize::Small)), None);
+        assert_eq!(
+            coupling_between(large, gear([1, 0, 1], Axis::Z, GearSize::Small)),
+            None
+        );
+        assert_eq!(
+            coupling_between(large, gear([2, 1, 0], Axis::Z, GearSize::Small)),
+            None
+        );
     }
 
     #[test]
@@ -184,9 +204,18 @@ mod tests {
         assert_eq!(coupling_between(x_gear, same_sign).unwrap().ratio, Rat::ONE);
         assert!(!coupling_between(x_gear, same_sign).unwrap().inverted);
         assert!(coupling_between(x_gear, opposite_sign).unwrap().inverted);
-        assert_eq!(coupling_between(x_gear, gear([1, 1, 0], Axis::X, GearSize::Large)), None);
-        assert_eq!(coupling_between(x_gear, gear([1, 0, 0], Axis::Y, GearSize::Large)), None);
-        assert_eq!(coupling_between(x_gear, gear([1, 1, 1], Axis::Y, GearSize::Large)), None);
+        assert_eq!(
+            coupling_between(x_gear, gear([1, 1, 0], Axis::X, GearSize::Large)),
+            None
+        );
+        assert_eq!(
+            coupling_between(x_gear, gear([1, 0, 0], Axis::Y, GearSize::Large)),
+            None
+        );
+        assert_eq!(
+            coupling_between(x_gear, gear([1, 1, 1], Axis::Y, GearSize::Large)),
+            None
+        );
     }
 
     #[test]
@@ -200,10 +229,7 @@ mod tests {
         assert_eq!(small_offsets, additional_gear_offsets(small));
         assert!(small_offsets.iter().all(|offset| offset[2] == 0));
         assert!(large_offsets.iter().all(|offset| {
-            u8::from(offset[0] != 0)
-                + u8::from(offset[1] != 0)
-                + u8::from(offset[2] != 0)
-                == 2
+            u8::from(offset[0] != 0) + u8::from(offset[1] != 0) + u8::from(offset[2] != 0) == 2
         }));
         for (index, offset) in large_offsets.iter().enumerate() {
             assert!(!large_offsets[..index].contains(offset));
